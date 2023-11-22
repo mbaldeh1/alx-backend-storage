@@ -1,38 +1,35 @@
 #!/usr/bin/env python3
-'''A module with tools for request caching and tracking.
-'''
+"""Advanced task for Redis"""
 import redis
-import requests
-from functools import wraps
-from typing import Callable
 
 
-redis_store = redis.Redis()
-'''The module-level Redis instance.
-'''
-
-
-def data_cacher(method: Callable) -> Callable:
-    '''Caches the output of fetched data.
-    '''
-    @wraps(method)
-    def invoker(url) -> str:
-        '''The wrapper function for caching the output.
-        '''
-        redis_store.incr(f'count:{url}')
-        result = redis_store.get(f'result:{url}')
-        if result:
-            return result.decode('utf-8')
-        result = method(url)
-        redis_store.set(f'count:{url}', 0)
-        redis_store.setex(f'result:{url}', 10, result)
-        return result
-    return invoker
-
-
-@data_cacher
 def get_page(url: str) -> str:
-    '''Returns the content of a URL after caching the request's response,
-    and tracking the request.
-    '''
-    return requests.get(url).text
+    """get_page"""
+    key = f"count:{url}"
+    red = redis.Redis()
+    red.incr(key)
+    return red.get(url)
+
+
+def get_status(status: int) -> str:
+    """get_status"""
+    key = f"status:{status}"
+    red = redis.Redis()
+    red.incr(key)
+    return red.get(status)
+
+
+def get_stats() -> str:
+    """get_stats"""
+    red = redis.Redis()
+    keys = red.keys("status:*")
+    keys.sort()
+    total = 0
+    stats = []
+    for key in keys:
+        status = key.decode("utf-8").split(":")[1]
+        count = red.get(key).decode("utf-8")
+        total += int(count)
+        stats.append(f"{status}: {count}")
+    stats.append(f"total: {total}")
+    return "\n".join(stats)
